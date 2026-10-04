@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  }
+  /* Keep anchored sections clear of the sticky header. */
+  [id] {
+    scroll-margin-top: 4.5rem;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900;
+  }
+  .section-title {
+    @apply mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400;
+  }
+  .field {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-800;
+  }
+  .btn {
+    @apply rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white active:bg-blue-700 disabled:opacity-50;
+  }
+  .row-link {
+    @apply flex items-center gap-3 px-4 py-3 active:bg-slate-100 dark:active:bg-slate-800;
+  }
+}

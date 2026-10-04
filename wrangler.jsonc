@@ -1,0 +1,11 @@
+{
+  "name": "volleyball-resultater",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  // The built Svelte app is served as static assets; everything under /api hits the Worker.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  }
+}
