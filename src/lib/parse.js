@@ -58,6 +58,12 @@ function keyValues(table) {
 }
 
 const known = (s) => (s && s !== 'Ikke angivet' ? s : '');
+
+/** Only plain web links from upstream may become hrefs (blocks e.g. javascript: URLs entered by club admins). */
+const webUrl = (a) => {
+  const href = a?.getAttribute('href')?.trim();
+  return href && /^https?:\/\//i.test(href) ? href : null;
+};
 const headline = (doc) => clean(doc.querySelector('h2.sr')?.textContent);
 const comment = (doc) => clean(doc.querySelector('.srPageComment')?.textContent).replace(/^Bemærk:\s*/, '');
 
@@ -180,7 +186,7 @@ export function parseMatch(doc) {
     .map((tr) => ({ score: clean(tr.querySelector('td.c01')?.textContent), text: clean(tr.querySelector('td.c02')?.textContent) }))
     .filter((e) => e.score && e.text);
 
-  const pdf = (k) => info.get(k)?.querySelector('a')?.getAttribute('href') ?? null;
+  const pdf = (k) => webUrl(info.get(k)?.querySelector('a'));
 
   return {
     number: txt('Kampnummer'),
@@ -232,7 +238,7 @@ export function parseClub(doc) {
   return {
     name: headline(doc),
     district: link(info.get('Kreds'), 'KredsId')?.name ?? '',
-    website: info.get('Hjemmeside')?.querySelector('a')?.getAttribute('href') ?? null,
+    website: webUrl(info.get('Hjemmeside')?.querySelector('a')),
     venues: venues.filter((v) => v.id),
   };
 }
