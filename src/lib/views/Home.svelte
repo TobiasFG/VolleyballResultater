@@ -75,6 +75,19 @@
     </p>
   {/if}
 
+  <section class="space-y-3">
+    <h2 class="section-title">Søg</h2>
+    <form class="flex gap-2" onsubmit={findClub}>
+      <input class="field" type="search" placeholder="Klubnavn, fx Gentofte" bind:value={clubQuery} enterkeyhint="search" />
+      <button class="btn w-28 shrink-0">Søg klub</button>
+    </form>
+    <form class="flex gap-2" onsubmit={findMatch}>
+      <input class="field" inputmode="numeric" pattern="[0-9]*" placeholder="Kampnummer" bind:value={matchNumber} enterkeyhint="search" />
+      <button class="btn w-28 shrink-0" disabled={!matchNumber.trim()}>Find kamp</button>
+    </form>
+    {#if matchMessage}<p class="px-1 text-sm text-slate-500">{matchMessage}</p>{/if}
+  </section>
+
   <section>
     <h2 class="section-title">Find række</h2>
     {#await options}
@@ -119,18 +132,5 @@
         <ErrorBox {error} />
       {/await}
     </div>
-  </section>
-
-  <section class="space-y-3">
-    <h2 class="section-title">Søg</h2>
-    <form class="flex gap-2" onsubmit={findClub}>
-      <input class="field" type="search" placeholder="Klubnavn, fx Gentofte" bind:value={clubQuery} enterkeyhint="search" />
-      <button class="btn shrink-0">Søg klub</button>
-    </form>
-    <form class="flex gap-2" onsubmit={findMatch}>
-      <input class="field" inputmode="numeric" pattern="[0-9]*" placeholder="Kampnummer" bind:value={matchNumber} enterkeyhint="search" />
-      <button class="btn shrink-0" disabled={!matchNumber.trim()}>Find kamp</button>
-    </form>
-    {#if matchMessage}<p class="px-1 text-sm text-slate-500">{matchMessage}</p>{/if}
   </section>
 </div>
