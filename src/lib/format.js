@@ -24,7 +24,7 @@ export function groupByDay(matches) {
   const groups = [];
   for (const m of matches) {
     const last = groups.at(-1);
-    if (last && last.date.toDateString() === m.date?.toDateString()) last.matches.push(m);
+    if (last && last.date?.toDateString() === m.date?.toDateString()) last.matches.push(m);
     else groups.push({ date: m.date, matches: [m] });
   }
   return groups;
