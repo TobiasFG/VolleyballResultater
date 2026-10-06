@@ -1,43 +1,50 @@
 <script>
-  import { isFavorite } from '../favorites.svelte.js';
+  import Crown from './Crown.svelte';
+  import TeamName from './TeamName.svelte';
 
-  let { table, team = null } = $props();
+  let { table } = $props();
 </script>
 
-<div class="card overflow-hidden">
-  <table class="w-full text-sm tabular-nums">
-    <thead class="text-xs text-slate-500 dark:text-slate-400">
-      <tr class="border-b border-slate-100 dark:border-slate-800">
-        <th class="w-8 py-2 pl-3 text-left font-medium">#</th>
-        <th class="py-2 text-left font-medium">Hold</th>
-        <th class="w-7 py-2 text-center font-medium" title="Kampe">K</th>
-        <th class="w-7 py-2 text-center font-medium" title="Vundne">V</th>
-        <th class="w-7 py-2 text-center font-medium" title="Tabte">T</th>
-        <th class="w-14 py-2 text-center font-medium">Sæt</th>
-        <th class="hidden w-24 py-2 text-center font-medium sm:table-cell">Bolde</th>
-        <th class="w-9 py-2 pr-3 text-right font-medium" title="Point">P</th>
+<table class="w-full text-sm tabular-nums md:text-[15px]">
+  <thead class="text-[11px] font-semibold tracking-[0.06em] text-mute uppercase">
+    <tr>
+      <th class="w-[22px] pb-2 text-left font-semibold md:w-9 lg:w-10">#</th>
+      <th class="pb-2 text-left font-semibold">Hold</th>
+      <th class="w-[22px] pb-2 text-center font-semibold md:w-[52px] lg:w-16" title="Kampe">K</th>
+      <th class="w-[22px] pb-2 text-center font-semibold md:w-[52px] lg:w-16" title="Vundne">V</th>
+      <th class="w-[22px] pb-2 text-center font-semibold md:w-[52px] lg:w-16" title="Tabte">T</th>
+      <th class="w-[46px] pb-2 text-center font-semibold md:w-[72px] lg:w-[88px]" title="Sæt vundne–tabte">Sæt</th>
+      <th class="w-[68px] pb-2 text-center font-semibold md:w-[104px] lg:w-[120px]" title="Bolde vundne–tabte">Bolde</th>
+      <th class="w-7 pb-2 text-right font-semibold md:w-9 lg:w-10" title="Point">P</th>
+    </tr>
+  </thead>
+  <tbody>
+    {#each table.rows as row}
+      {@const leader = row.pos === '1'}
+      <tr class="border-t border-line last:border-b">
+        <td class="py-3 md:py-3.5">
+          {#if leader}
+            <span class="relative inline-block"><Crown class="-top-[11px] -left-[3px] h-3 w-3.5" /><span class="gold font-bold">{row.pos}</span></span>
+          {:else}
+            <span class="text-mute">{row.pos}</span>
+          {/if}
+        </td>
+        <td class="max-w-0 py-3 md:py-3.5">
+          {#if row.team?.id}
+            <a href="#/hold/{row.team.id}" class="block truncate pr-3.5 text-[15px] {leader ? 'font-semibold' : 'font-medium'}">
+              <TeamName team={row.team} nameClass={leader ? 'gold' : ''} />
+            </a>
+          {:else}
+            <span class="block truncate">{row.team?.name}</span>
+          {/if}
+        </td>
+        <td class="py-3 text-center md:py-3.5">{row.played}</td>
+        <td class="py-3 text-center md:py-3.5">{row.won}</td>
+        <td class="py-3 text-center md:py-3.5">{row.lost}</td>
+        <td class="py-3 text-center text-[13px] text-mute md:py-3.5 md:text-[15px]">{row.setsWon}–{row.setsLost}</td>
+        <td class="py-3 text-center text-[13px] text-mute md:py-3.5 md:text-[15px]">{row.balls}</td>
+        <td class="py-3 text-right font-bold md:py-3.5">{row.points}</td>
       </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-      {#each table.rows as row}
-        {@const mine = row.team?.id && (row.team.id === team || isFavorite(row.team.id))}
-        <tr class={[mine && 'bg-blue-50 dark:bg-blue-950/60']}>
-          <td class="py-2.5 pl-3 text-slate-500 dark:text-slate-400">{row.pos}</td>
-          <td class="max-w-0 py-2.5">
-            {#if row.team?.id}
-              <a href="#/hold/{row.team.id}" class="block truncate font-medium">{row.team.name}</a>
-            {:else}
-              <span class="block truncate">{row.team?.name}</span>
-            {/if}
-          </td>
-          <td class="py-2.5 text-center">{row.played}</td>
-          <td class="py-2.5 text-center">{row.won}</td>
-          <td class="py-2.5 text-center">{row.lost}</td>
-          <td class="py-2.5 text-center text-slate-600 dark:text-slate-300">{row.setsWon}-{row.setsLost}</td>
-          <td class="hidden py-2.5 text-center text-slate-600 sm:table-cell dark:text-slate-300">{row.balls}</td>
-          <td class="py-2.5 pr-3 text-right font-semibold">{row.points}</td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
-</div>
+    {/each}
+  </tbody>
+</table>

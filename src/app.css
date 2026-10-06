@@ -1,7 +1,39 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+@theme inline {
+  --font-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-line: var(--line);
+  --color-fav: var(--fav);
+  --color-win: var(--win);
+  --color-loss: var(--loss);
+}
+
+:root {
+  --bg: #fafaf7;
+  --ink: #16181d;
+  --mute: #6b6f76;
+  --line: #e8e8e2;
+  --fav: #3b82f6;
+  --win: #15803d;
+  --loss: #b42318;
+  --gold-a: #ffcc00;
+  --gold-b: #d9a400;
+  color-scheme: light;
+}
+
+:root.dark {
+  --bg: #1b1e23;
+  --ink: #e9eaee;
+  --mute: #a0a5ae;
+  --line: #30353c;
+  --fav: #60a5fa;
+  --win: #5fd38d;
+  --loss: #ff8a7e;
+  --gold-b: #fff4b0;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -9,28 +41,106 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-bg font-sans text-ink antialiased;
   }
-  /* Keep anchored sections clear of the sticky header. */
-  [id] {
-    scroll-margin-top: 4.5rem;
+  input::placeholder {
+    color: var(--mute);
+  }
+  input:focus,
+  select:focus {
+    outline: none;
   }
 }
 
 @layer components {
-  .card {
-    @apply rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900;
-  }
   .section-title {
-    @apply mb-2 px-1 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400;
+    @apply text-xs font-semibold tracking-[0.08em] text-mute uppercase;
   }
-  .field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base dark:border-slate-700 dark:bg-slate-800;
+  .page-title {
+    @apply text-[30px] leading-[1.12] font-bold tracking-[-0.02em] md:text-[38px] lg:text-[44px];
   }
-  .btn {
-    @apply rounded-xl bg-blue-600 px-4 py-2.5 font-medium text-white active:bg-blue-700 disabled:opacity-50;
+  /* Hairline lists: the container draws the top rule, each row its own bottom rule. */
+  .list {
+    @apply border-t border-line;
   }
-  .row-link {
-    @apply flex items-center gap-3 px-4 py-3 active:bg-slate-100 dark:active:bg-slate-800;
+  .list-row {
+    @apply flex min-h-[52px] items-center justify-between gap-3 border-b border-line;
+  }
+  .more-link {
+    @apply flex min-h-11 items-center gap-2 text-sm font-semibold;
+  }
+  .text-link {
+    @apply underline underline-offset-[3px];
+  }
+  .field-line {
+    @apply w-full appearance-none rounded-none border-0 border-b border-line bg-transparent px-0 pt-1.5 pb-2 pr-5 text-[15px] font-medium text-ink;
+  }
+  .upcoming-label {
+    @apply mt-5 text-center text-xs font-semibold tracking-[0.08em] text-ink uppercase;
+  }
+
+  /* Leader of a group: gold with a light sweep. */
+  .gold {
+    background: linear-gradient(100deg, var(--gold-a) 38%, var(--gold-b) 50%, var(--gold-a) 62%) 0 0 / 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: shine 3.2s linear infinite;
+  }
+  .crown {
+    position: absolute;
+    pointer-events: none;
+    transform-origin: 50% 100%;
+    animation: pop 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  .crown .cb {
+    fill: url(#crownShine);
+  }
+  .crown .cl {
+    stroke: url(#crownShine);
+  }
+}
+
+@keyframes shine {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.3) rotate(30deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2) rotate(-4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(10deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gold {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--gold-a);
+    color: var(--gold-a);
+  }
+  .crown {
+    animation: none;
+    transform: rotate(10deg);
+  }
+  .crown .cb {
+    fill: url(#crownGrad);
+  }
+  .crown .cl {
+    stroke: url(#crownGrad);
   }
 }

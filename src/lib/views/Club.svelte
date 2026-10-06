@@ -1,6 +1,8 @@
 <script>
   import { page } from '../api.js';
   import { parseClub, parseClubTeams } from '../parse.js';
+  import TeamName from '../components/TeamName.svelte';
+  import VenueBlock from '../components/VenueBlock.svelte';
   import Loading from '../components/Loading.svelte';
   import ErrorBox from '../components/ErrorBox.svelte';
 
@@ -17,48 +19,45 @@
 {#await data}
   <Loading />
 {:then [club, teams]}
-  <h1 class="text-2xl font-bold">{club.name}</h1>
-  <p class="text-sm text-slate-500 dark:text-slate-400">{club.district}</p>
-  {#if club.website}
-    <a href={club.website} target="_blank" rel="noopener" class="mt-1 inline-block text-sm text-blue-700 dark:text-blue-400">
-      {club.website.replace(/^https?:\/\/|\/$/g, '')} ↗
-    </a>
-  {/if}
+  <div class="flex flex-col gap-8">
+    <div class="flex flex-col gap-1.5">
+      <div class="text-[13px] text-mute">{club.district}</div>
+      <h1 class="page-title">{club.name}</h1>
+      {#if club.website}
+        <a href={club.website} target="_blank" rel="noopener" class="text-link mt-1 text-sm font-medium">{club.website.replace(/^https?:\/\/|\/$/g, '')} ↗</a>
+      {/if}
+    </div>
 
-  <section class="mt-6">
-    <h2 class="section-title">Hold</h2>
-    {#if teams.length}
-      <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        {#each teams as t (t.team.id)}
-          <a href="#/hold/{t.team.id}" class="row-link">
-            <div class="min-w-0 flex-1">
-              <div class="truncate font-medium">{t.team.name}</div>
-              <div class="truncate text-xs text-slate-500 dark:text-slate-400">{t.league?.name}{t.pool ? ` · ${t.pool.name}` : ''}</div>
-            </div>
-            <svg class="size-5 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
-          </a>
-        {/each}
-      </div>
-    {:else}
-      <p class="card p-4 text-center text-slate-500">Ingen hold i denne sæson</p>
-    {/if}
-  </section>
-
-  {#if club.venues.length}
-    <section class="mt-6">
-      <h2 class="section-title">Spillesteder</h2>
-      <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        {#each club.venues as venue (venue.id)}
-          <a href="#/spillested/{venue.id}" class="row-link">
-            <div class="min-w-0 flex-1">
-              <div class="font-medium">{venue.name}</div>
-              <div class="text-xs text-slate-500 dark:text-slate-400">{venue.address.join(', ')}</div>
-            </div>
-          </a>
-        {/each}
-      </div>
+    <div class="grid gap-8 md:grid-cols-[3fr_2fr] md:items-start md:gap-x-12 lg:grid-cols-[7fr_5fr] lg:gap-x-24">
+    <section>
+      <h2 class="section-title mb-1.5">Hold</h2>
+      {#if teams.length}
+        <div class="list">
+          {#each teams as t (t.team.id)}
+            <a href="#/hold/{t.team.id}" class="list-row min-h-[60px]">
+              <div class="min-w-0">
+                <div class="truncate text-base font-medium"><TeamName team={t.team} /></div>
+                <div class="truncate text-[13px] text-mute">{t.league?.name}{t.pool ? ` · ${t.pool.name}` : ''}</div>
+              </div>
+              <svg class="size-[18px] shrink-0 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <p class="border-y border-line py-3.5 text-[15px] text-mute">Ingen hold i denne sæson</p>
+      {/if}
     </section>
-  {/if}
+
+    {#if club.venues.length}
+      <section class="flex flex-col gap-6">
+        <h2 class="section-title -mb-3">{club.venues.length > 1 ? 'Spillesteder' : 'Spillested'}</h2>
+        {#each club.venues as venue (venue.id)}
+          <VenueBlock {venue} address={venue.address} />
+        {/each}
+      </section>
+    {/if}
+    </div>
+  </div>
 {:catch error}
   <ErrorBox {error} />
 {/await}

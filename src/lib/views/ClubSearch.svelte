@@ -11,24 +11,24 @@
   const data = search({ type: 'club', q: query }).then(({ doc }) => parseClubList(doc));
 </script>
 
-<h1 class="mb-4 text-2xl font-bold">Klubber: “{query}”</h1>
+<h1 class="page-title mb-7">Klubber: “{query}”</h1>
 {#await data}
   <Loading />
 {:then clubs}
   {#if clubs.length}
-    <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+    <div class="list md:grid md:grid-cols-2 md:gap-x-12">
       {#each clubs as club (club.id)}
-        <a href="#/klub/{club.id}" class="row-link">
-          <div class="min-w-0 flex-1">
-            <div class="font-medium">{club.name}</div>
-            <div class="text-xs text-slate-500 dark:text-slate-400">{club.district}</div>
+        <a href="#/klub/{club.id}" class="list-row min-h-[60px]">
+          <div class="min-w-0">
+            <div class="text-[17px] font-medium">{club.name}</div>
+            <div class="text-[13px] text-mute">{club.district}</div>
           </div>
-          <svg class="size-5 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+          <svg class="size-[18px] shrink-0 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </a>
       {/each}
     </div>
   {:else}
-    <p class="card p-4 text-center text-slate-500">Ingen klubber fundet</p>
+    <p class="border-y border-line py-3.5 text-[15px] text-mute">Ingen klubber fundet</p>
   {/if}
 {:catch error}
   <ErrorBox {error} />

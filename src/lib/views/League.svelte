@@ -23,13 +23,13 @@
   <Loading />
 {:then league}
   {#if league}
-    <h1 class="mb-4 text-2xl font-bold">{league.title}</h1>
-    <h2 class="section-title">Puljer</h2>
-    <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+    <h1 class="page-title mb-7">{league.title}</h1>
+    <h2 class="section-title mb-1.5">Puljer</h2>
+    <div class="list md:grid md:grid-cols-2 md:gap-x-12">
       {#each league.pools as pool (pool.id)}
-        <a href="#/pulje/{pool.id}" class="row-link font-medium">
-          <span class="flex-1">{pool.name}</span>
-          <svg class="size-5 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
+        <a href="#/pulje/{pool.id}" class="list-row min-h-14 text-[17px] font-medium">
+          <span>{pool.name}</span>
+          <svg class="size-[18px] shrink-0 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </a>
       {/each}
     </div>

@@ -1,83 +1,78 @@
 <script>
-  import { formatDay, formatTime, groupByDay, startOfToday } from '../format.js';
+  import { formatDay, formatTime, groupByDay } from '../format.js';
+  import { tone, toneClass } from '../results.js';
+  import TeamName from './TeamName.svelte';
 
   /**
    * matches: parsed matches (already in the order to show)
-   * team: HoldId to mark won/lost for
-   * scrollToNext: jump to the first day that hasn't happened yet
-   * showLeague / showVenue: extra line per match
+   * team: HoldId of the team whose page this is (its name is emphasised and results get a V/T mark)
+   * showLeague / showVenue / showTime: extra parts of each row
+   * emphasizeFirst: ink instead of grey for the first day heading (the next match day)
    */
-  let { matches, team = null, scrollToNext = false, showLeague = false, showVenue = true } = $props();
-
+  let { matches, team = null, showLeague = false, showVenue = true, showTime = true, emphasizeFirst = false } = $props();
   const groups = $derived(groupByDay(matches));
-  const nextIndex = $derived(groups.findIndex((g) => g.date >= startOfToday()));
 
-  function scrollHere(node, enabled) {
-    if (enabled) requestAnimationFrame(() => node.scrollIntoView({ block: 'start' }));
+  const won = (m, side) => (side === 0 ? m.score[0] > m.score[1] : m.score[1] > m.score[0]);
+
+  function nameClass(m, side) {
+    const own = team && [m.home, m.away][side]?.id === team;
+    if (!m.score) return own ? 'font-semibold' : '';
+    if (team) return own ? 'font-semibold' : 'text-mute';
+    return won(m, side) ? 'font-semibold' : 'text-mute';
   }
 
-  const side = (m, s) => {
-    if (!m.score) return '';
-    const [h, a] = m.score;
-    const won = s === 'home' ? h > a : a > h;
-    return won ? 'font-semibold' : 'text-slate-500 dark:text-slate-400';
-  };
+  function scoreClass(m, side) {
+    const colour = toneClass(tone(m.home, m.away, m.score, side));
+    return [won(m, side) && 'font-bold', colour || (!won(m, side) && 'text-mute')];
+  }
 
-  function outcome(m) {
-    if (!m.score || !team) return null;
-    const home = m.home?.id === team;
-    const [h, a] = m.score;
-    return (home ? h > a : a > h) ? 'V' : 'T';
+  function mark(m) {
+    const side = m.home?.id === team ? 0 : 1;
+    const colour = toneClass(tone(m.home, m.away, m.score, side));
+    return { letter: won(m, side) ? 'V' : 'T', cls: colour || (won(m, side) ? 'text-ink' : 'text-mute') };
   }
 </script>
 
 {#if matches.length === 0}
-  <p class="card p-4 text-center text-slate-500">Ingen kampe</p>
+  <p class="border-y border-line py-3.5 text-[15px] text-mute">Ingen kampe</p>
 {/if}
-
-<div class="space-y-4">
+<div class="flex flex-col gap-5">
   {#each groups as group, i}
-    <!-- scroll-mt clears the sticky header plus the pool page's sticky tabs -->
-    <section class="scroll-mt-32" use:scrollHere={scrollToNext && i === nextIndex && i > 0}>
-      <h3 class="section-title">{group.date ? formatDay(group.date) : 'Dato ikke fastsat'}</h3>
-      <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-        {#each group.matches as m (m.id)}
-          {@const result = outcome(m)}
-          <a href="#/kamp/{m.id}" class="row-link">
-            <div class="w-12 shrink-0 text-sm text-slate-500 tabular-nums dark:text-slate-400">
+    <section>
+      <h3 class={['mb-1 text-xs font-semibold tracking-[0.08em] uppercase', emphasizeFirst && i === 0 ? 'text-ink' : 'text-mute']}>
+        {group.date ? formatDay(group.date) : 'Dato ikke fastsat'}
+      </h3>
+      {#each group.matches as m (m.id)}
+        <a href="#/kamp/{m.id}" class="flex items-center gap-4 border-b border-line py-2.5">
+          {#if showTime}
+            <div class="w-11 shrink-0 text-sm text-mute tabular-nums">
               {m.date && (m.date.getHours() || m.date.getMinutes()) ? formatTime(m.date) : ''}
             </div>
-            <div class="min-w-0 flex-1">
-              {#if showLeague && m.league}
-                <div class="truncate text-xs text-slate-500 dark:text-slate-400">{m.league.name}{m.pool ? ` · ${m.pool.name}` : ''}</div>
-              {/if}
-              <div class={['truncate', side(m, 'home'), team === m.home?.id && !m.score && 'font-medium text-blue-700 dark:text-blue-400']}>
-                {m.home?.name ?? '–'}
-              </div>
-              <div class={['truncate', side(m, 'away'), team === m.away?.id && !m.score && 'font-medium text-blue-700 dark:text-blue-400']}>
-                {m.away?.name ?? '–'}
-              </div>
-              {#if showVenue && m.venue}
-                <div class="truncate text-xs text-slate-500 dark:text-slate-400">{m.venue.name}</div>
-              {/if}
+          {/if}
+          <div class="min-w-0 flex-1 pr-3 text-base">
+            {#if showLeague && m.league}
+              <div class="truncate text-xs text-mute">{m.league.name}{m.pool ? ` · ${m.pool.name}` : ''}</div>
+            {/if}
+            <div class={nameClass(m, 0)}><TeamName team={m.home} /></div>
+            <div class={nameClass(m, 1)}><TeamName team={m.away} /></div>
+            {#if showVenue && m.venue}
+              <div class="mt-[3px] truncate text-xs text-mute">{m.venue.name}</div>
+            {/if}
+          </div>
+          {#if m.score}
+            <div class="text-right text-xl leading-[1.3] tabular-nums">
+              <div class={scoreClass(m, 0)}>{m.score[0]}</div>
+              <div class={scoreClass(m, 1)}>{m.score[1]}</div>
             </div>
-            {#if result}
-              <span
-                class="grid size-6 shrink-0 place-items-center rounded-md text-xs font-bold text-white {result === 'V' ? 'bg-emerald-600' : 'bg-rose-600'}"
-                title={result === 'V' ? 'Vundet' : 'Tabt'}>{result}</span
-              >
+            {#if team}
+              {@const r = mark(m)}
+              <div class={['w-5 shrink-0 text-right text-[13px] font-bold', r.cls]}>{r.letter}</div>
             {/if}
-            {#if m.score}
-              <div class="w-5 shrink-0 text-right text-lg leading-6 tabular-nums">
-                <div class={side(m, 'home')}>{m.score[0]}</div>
-                <div class={side(m, 'away')}>{m.score[1]}</div>
-              </div>
-            {:else}
-              <svg class="size-5 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
-            {/if}
-          </a>
-        {/each}
-      </div>
+          {:else}
+            <svg class="size-[18px] shrink-0 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          {/if}
+        </a>
+      {/each}
     </section>
   {/each}
 </div>

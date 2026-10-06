@@ -19,8 +19,8 @@
 
   let filter = $state(loadFilter());
   const options = page('Soegning.aspx').then(({ doc }) => parseSearchOptions(doc));
-  let leagues = $state(findLeagues());
 
+  let leagues = $state(findLeagues());
   function findLeagues() {
     try {
       localStorage.setItem(FILTER_KEY, JSON.stringify(filter));
@@ -30,24 +30,24 @@
     return search({ type: 'rows', ...filter }).then(({ doc }) => parseRowList(doc));
   }
 
-  let clubQuery = $state('');
-  let matchNumber = $state('');
-  let matchMessage = $state('');
-
-  function findClub(e) {
+  // One search field: a number looks up that match number, anything else searches clubs by name.
+  let query = $state('');
+  let message = $state('');
+  async function find(e) {
     e.preventDefault();
-    if (clubQuery.trim()) location.hash = '#/soeg/klub/' + encodeURIComponent(clubQuery.trim());
-  }
-
-  async function findMatch(e) {
-    e.preventDefault();
-    matchMessage = 'Søger…';
+    const q = query.trim();
+    if (!q) return;
+    if (!/^\d+$/.test(q)) {
+      location.hash = '#/soeg/klub/' + encodeURIComponent(q);
+      return;
+    }
+    message = 'Søger…';
     try {
-      const id = parseMatchSearch((await search({ type: 'match', q: matchNumber.trim() })).doc);
+      const id = parseMatchSearch((await search({ type: 'match', q })).doc);
       if (id) location.hash = '#/kamp/' + id;
-      else matchMessage = 'Ingen kamp med det nummer';
+      else message = 'Ingen kamp med det nummer';
     } catch (err) {
-      matchMessage = err.message;
+      message = err.message;
     }
   }
 
@@ -59,78 +59,88 @@
   ];
 </script>
 
-<div class="space-y-8">
-  {#if favorites.length}
-    <section>
-      <h2 class="section-title">Mine hold</h2>
-      <div class="space-y-3">
+<div class="flex flex-col gap-9 pt-6 lg:grid lg:grid-cols-[5fr_7fr] lg:items-start lg:gap-x-16 lg:pt-10 xl:gap-x-28">
+  <div class="flex flex-col gap-9">
+    <h1 class="text-[34px] leading-[1.1] font-bold tracking-[-0.02em] md:text-[38px] lg:text-[44px]">Favoritter</h1>
+
+    {#if favorites.length}
+      <div class="flex flex-col md:grid md:grid-cols-3 md:gap-x-8 lg:flex">
         {#each favorites as fav (fav.id)}
           <FavoriteCard {fav} />
         {/each}
       </div>
-    </section>
-  {:else}
-    <p class="card p-4 text-sm text-slate-600 dark:text-slate-300">
-      Find dit hold herunder og tryk på ☆ for at få dets næste kamp og seneste resultat vist her.
-    </p>
-  {/if}
+    {:else}
+      <p class="-mt-3 text-base leading-relaxed text-mute">
+        Find dit hold herunder og tryk på
+        <svg class="inline size-4 align-[-2px] fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" stroke-linejoin="round" role="img" aria-label="stjerne"
+          ><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" /></svg
+        >
+        for at få dets næste kamp og seneste resultat vist her.
+      </p>
+    {/if}
+  </div>
 
-  <section class="space-y-3">
-    <h2 class="section-title">Søg</h2>
-    <form class="flex gap-2" onsubmit={findClub}>
-      <input class="field" type="search" placeholder="Klubnavn, fx Gentofte" bind:value={clubQuery} enterkeyhint="search" />
-      <button class="btn w-28 shrink-0">Søg klub</button>
-    </form>
-    <form class="flex gap-2" onsubmit={findMatch}>
-      <input class="field" inputmode="numeric" pattern="[0-9]*" placeholder="Kampnummer" bind:value={matchNumber} enterkeyhint="search" />
-      <button class="btn w-28 shrink-0" disabled={!matchNumber.trim()}>Find kamp</button>
-    </form>
-    {#if matchMessage}<p class="px-1 text-sm text-slate-500">{matchMessage}</p>{/if}
-  </section>
+  <div class="flex flex-col gap-9 lg:gap-11 lg:pt-3">
+    <form class="flex flex-col gap-3" onsubmit={find}>
+    <div class="flex items-center gap-3 border-b-[1.5px] border-ink pb-2.5">
+      <svg class="size-5 flex-none fill-none stroke-ink stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" />
+      </svg>
+      <input
+        class="min-w-0 flex-1 bg-transparent py-1 text-base"
+        type="search"
+        aria-label="Klub eller kampnummer"
+        placeholder="Søg klub eller kampnummer"
+        enterkeyhint="search"
+        bind:value={query}
+      />
+      <button class="cursor-pointer text-sm font-semibold">Søg</button>
+    </div>
+    <p class="text-xs text-mute">{message || 'Et tal slår kampnummeret op, alt andet søger på klubnavn.'}</p>
+  </form>
 
-  <section>
-    <h2 class="section-title">Find række</h2>
+  <section class="flex flex-col gap-[18px]">
+    <h2 class="text-xl font-bold tracking-[-0.01em]">Find række</h2>
     {#await options}
       <Loading />
     {:then opts}
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4 lg:grid-cols-2">
         {#each selects as [key, label, list]}
-          <label class="block">
-            <span class="mb-1 block px-1 text-xs text-slate-500 dark:text-slate-400">{label}</span>
-            <select class="field" bind:value={filter[key]} onchange={() => (leagues = findLeagues())}>
+          <label class="relative block">
+            <span class="block text-xs text-mute">{label}</span>
+            <select class="field-line" bind:value={filter[key]} onchange={() => (leagues = findLeagues())}>
               {#each opts[list] as o}
                 <option value={o.value}>{o.label}</option>
               {/each}
             </select>
+            <svg class="pointer-events-none absolute right-0 bottom-[9px] size-4 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
           </label>
         {/each}
       </div>
     {:catch error}
       <ErrorBox {error} />
     {/await}
-
-    <div class="mt-3">
-      {#await leagues}
-        <Loading />
-      {:then rows}
-        {#if rows.length}
-          <div class="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
-            {#each rows as row (row.id)}
-              <a href="#/raekke/{row.id}" class="row-link">
-                <div class="min-w-0 flex-1">
-                  <div class="font-medium">{row.name}</div>
-                  {#if row.note}<div class="text-xs text-slate-500 dark:text-slate-400">{row.note}</div>{/if}
-                </div>
-                <svg class="size-5 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" /></svg>
-              </a>
-            {/each}
-          </div>
-        {:else}
-          <p class="card p-4 text-center text-slate-500">Ingen rækker fundet</p>
-        {/if}
-      {:catch error}
-        <ErrorBox {error} />
-      {/await}
-    </div>
+    {#await leagues}
+      <Loading />
+    {:then rows}
+      {#if rows.length}
+        <div class="list md:grid md:grid-cols-2 md:gap-x-12 lg:grid-cols-1">
+          {#each rows as row (row.id)}
+            <a href="#/raekke/{row.id}" class="list-row">
+              <div class="min-w-0">
+                <div class="text-base font-medium">{row.name}</div>
+                {#if row.note}<div class="text-xs text-mute">{row.note}</div>{/if}
+              </div>
+              <svg class="size-[18px] shrink-0 fill-none stroke-mute stroke-[1.8]" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <p class="border-y border-line py-3.5 text-[15px] text-mute">Ingen rækker fundet</p>
+      {/if}
+    {:catch error}
+      <ErrorBox {error} />
+    {/await}
   </section>
+  </div>
 </div>
