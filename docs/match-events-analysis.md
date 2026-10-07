@@ -1,11 +1,23 @@
 # Making "Kampforløb" smarter: feasibility analysis
 
-Status: analysis only, no code changed. Written 2026-10-07.
+Status: revised 2026-10-07 after researching the rules of the game and testing 13 real matches. Options 1-5 below are
+implemented; the court view (who is on court) is analysed but not built.
 
 ## Question
 
 The match page shows the upstream event log ("Kampforløb") as a flat list, newest first. It is long and repetitive.
 Could it be made smarter, for example by combining consecutive "Point til X" lines into one "3 point til X"?
+The revision asks a wider question: what is the most effective and accurate way to present this data, grounded in how
+volleyball works, and can we show exactly who is on court at any moment?
+
+## What changed in this revision
+
+- The first version looked at one match. This one uses 13 matches with events (youth, cup, women, Mix, 5-setters,
+  lower leagues) plus a wider scan across seasons to see where logs exist.
+- Rules research changed the recommendation: the log supports better views than merged point lines (lead graph per set,
+  side-out and break-point percentages), and the scoresheet PDF makes a court view possible.
+- Data quirks found upstream (duplicates, anonymous libero swaps, manual corrections) are listed under
+  "Data quality" and drive the design: unknown lines always fall back to raw text.
 
 ## What the data looks like
 
@@ -32,63 +44,144 @@ Observations that matter for the design:
 - Set boundaries are explicit (`N. sæt startet`, `<team> vinder N. sæt`).
 - About 90% of the substitutions (84 of 95) are libero swaps (`skifter libero … ind/ud`), which are mostly noise.
 - Substitution lines contain player names and shirt numbers. They are already public upstream, but they make the list heavy.
+- The same page links two PDFs (`api.volleyball.dk/api/pdf/roster/` and `/scorecard/`, both `?matchID=<KampId>`). The
+  roster is the squad with liberos marked "L". The scoresheet holds the starting six of every set in service order,
+  who serves first, substitutions with the score at the change, and set times (see "Who is on court").
 
-## Option A: combine consecutive point events (the original idea)
+## How volleyball works, and what that means for the data
 
-Feasible and cheap (a small pass over the reversed list), but the payoff is modest in the sample:
+Sources: FIVB Official Volleyball Rules 2025-2028 and the Danish federation's (DVBF) regulations and 2025/2026 rule
+change notes (links at the end).
 
-| Run rule | Point events | Runs | Run length 1 / 2 / 3 / 4 |
-|---|---|---|---|
-| Any other event ends a run | 208 | 162 | 129 / 22 / 9 / 2 |
-| Substitutions are ignored (timeouts and set changes still end a run) | 208 | 134 | 81 / 37 / 11 / 5 |
+- **Scoring.** Rally point. A set goes to 25, win by 2, no cap. The deciding set goes to 15, win by 2. Senior
+  Danmarksturneringen is first to 3 sets; U15/U17 and Mix are best of 3; U20 best of 3 or 5; some cup rounds use a
+  Golden Set to 15. So the number of sets and the target are not fixed. The app infers the target from the finished set
+  score (a winner below 25 means a 15-point set).
+- **Serve and rotation.** A team that wins a rally while receiving rotates one position clockwise and serves; the
+  serving team keeps its server. Who serves a rally is therefore known from who won the previous rally. Only the very
+  first rally of a set is unknown from the log alone. Set 1 and set 5 are decided by toss, sets 2-4 alternate.
+- **Substitutions.** 6 per set in the FIVB 2025-28 text; DVBF's September 2026 change note says 8 (effective date not
+  verified, so the limit is never hard-coded). A starter may leave once and return once, to the same position. In the
+  13 sampled matches no team used more than 6 in a set; 1-4 is typical.
+- **Libero.** Replaces back-row players only, cannot serve, swaps are unlimited and do not count as substitutions.
+  A swap never changes rotation order.
+- **Timeouts.** 2 per team per set. No technical timeouts at DVBF level.
+- **What a point-by-point log can give us:** lead over time, scoring runs, side-out % (points won as receiver),
+  break-point % (points won as server), timeouts in context, set point and deuce. **What it cannot:** the cause of a
+  point (ace, kill, error), serve quality, attack type.
 
-Roughly 80% (strict) or 60% (lenient) of runs are a single point and the longest is 4, so only a minority of rows would
-actually read "3 point i træk". Worth doing, but not enough on its own.
+## Data quality (13 matches with events)
 
-## Option B: collapse substitutions
+- Logs and scoresheets exist from about September 2025 (a September 2025 cup match has them, an October 2024 match does
+  not). Older matches show no Kampforløb; this must not be treated as an error.
+- **Duplicates.** 7 of 114 timeouts and some set-start markers (up to 3 in a row) are logged more than once. Consecutive
+  identical timeout and set markers are de-duplicated. The first analysis's "16 timeouts" for match 75419 is 12 real ones.
+- **Extra event types.** Warnings and penalties ("har fået tildelt en advarsel / straf"), "Der er sket en manuel
+  ændring i kampskemaet." and anonymous libero swaps ("har lavet en ombytning af deres libero", no player named).
+  These show as raw text (anonymous libero swaps are folded with the other libero swaps).
+- **Names.** Team names in events equal the names on the page; matching is an exact string comparison. A name that
+  matches neither team makes the line fall back to raw text.
 
-Group consecutive substitution lines into one expandable row ("3 udskiftninger"), or hide libero swaps by default.
-Removes about 29% of the rows in the sample, which is more than Option A. Trivial to implement.
+## Option 1: lead graph per set
 
-## Option C: group by set
+For each set, the lead (home minus away) after every rally, home above a zero line and away below. Marked on it:
+timeouts (circle, on the calling team's edge), regular substitutions (short tick), set point (ring), scoring runs of
+5+ (thicker line) and the extended part of the set from 24-24 (shaded band). Same vertical scale in all sets, so sets are
+comparable. Tapping a graph selects a rally, opens that set in the list and highlights its row. Libero swaps are left
+out of the graph because they are noise.
 
-Split the log with the set start and set won markers and render one section per set, with a header such as
-"1. sæt · VK Raptus vandt 25–19". Sections can be collapsed, with the latest or all sets open. This is the largest
-structural improvement and makes A and B easier to read. Moderate effort.
+Why this form: the data's job is polarity (who is ahead, by how much) over time, which is what a diverging line shows.
+It gives the shape of the set (comeback, runaway, tight finish) without reading any rows.
 
-## Option D: annotate timeouts and key moments
+## Option 2: side-out and break-point
 
-In the sample every timeout (16 of 16) followed a run of 1–4 points by the **opposing** team, so a row like
-"Timeout VK Raptus · efter 3 point i træk til ASV Aarhus.2" is possible. Set point and match point cannot be derived
-reliably (the rules vary by set and competition), so those are out of scope unless the rules are encoded.
+Per team, for the match and per set. The first rally of each set is left out because the log doesn't say who served it.
+Each rally is counted once for the receiving team's side-out and once for the serving team's break point, so one
+team's side-out % is always 100 minus the other team's break-point %. Both are shown because that is how the numbers are
+usually read. Side-out % is the usual measure of how well a team converts reception, and is a published predictor of
+winning. Labels are plain Danish ("Sideout", "Breakpoint") with a one-line explanation.
 
-## Option E: lead chart per set
+## Option 3: list grouped by set
 
-A small line or bar chart of the point difference over the set, built from the point sequence only. Gives an overview
-without reading any rows. Most work of the options here; independent of the others.
+One collapsible section per set, newest set first and open by default, headed with the set result. Rows inside:
+consecutive points by the same team merge into "3 point i træk til X" (a single point keeps the upstream wording),
+runs of 5+ get a badge ("7–0 serie") on the row where the run ends, the row where a team reaches set point gets a
+"Sætbold" badge. Libero swaps are hidden behind a "Vis liberoskift (N)" toggle. Sets are numbered by their start marker.
+
+Run lengths over the 13 matches (1,222 runs): 1 point 56%, 2 points 26%, 3 points 10%, 4 points 4%, 5+
+about 3.5%. Merging alone saves few rows, which is why the badge is reserved for runs of 5+.
+
+## Option 4: timeouts and substitutions in context
+
+A timeout row says what led to it: "efter 4 point i træk til ASV Aarhus.2" (shown when the run is 2 or more). Across
+the 13 matches all 107 distinct timeouts were called by the team that had just lost the last point, after a run of 1-6
+(median 3). A substitution row shows "Ind: Name (no) · Ud: Name (no)".
+
+## Option 5: raw fallback
+
+Anything the classifier does not recognise is shown as the raw upstream line with its score, never dropped.
+
+## Court view: who is on court (analysed, not built)
+
+Yes, it is possible, with data from the scoresheet PDF.
+
+- **Method.** Starting six per set in service order I-VI come from the PDF. Replay the log: a side-out rotates the
+  receiving team one place; a substitution or libero swap replaces the named player in the position of the player it
+  names. The first server per set is printed on the sheet.
+- **Test.** A throwaway script (not in the repo) read the PDF with `pdftotext -bbox`, took the numbers on the "No. of
+  starting player" row of each set box, and replayed 13 matches, checking that every substitution replaces a player who
+  is on court and every libero swap targets a back-row position. 9 matches were fully consistent. 1 had two mismatches
+  caused by the PDF extraction picking up a stray character in set 5. 3 desynced because of manual corrections or
+  anonymous libero swaps. Any court view must therefore detect a desync and stop showing the court for the rest of that
+  set.
+- **Cost.** The PDFs live on another host (`api.volleyball.dk`), so the Worker needs a new route, and the browser or
+  Worker needs a PDF text reader. A deciding set in a best-of-3 match uses the "set 5" box of the sheet.
+- **Value.** Court diagram per rally, who is serving, per-player points while on court. Useful but heavier and
+  fragile; it should come after the log-only views have proven themselves.
 
 ## Limits and risks
 
 - **Free text.** There is no structured event type upstream. Classification relies on Danish phrasing (`Point til`,
   `skifter`, `har bedt om en timeout.`, `vinder N. sæt`, `N. sæt startet`). If upstream rewords these, parsing silently
-  degrades. Mitigation: classify with anchored patterns and always fall back to showing the raw line for anything
-  unrecognised.
-- **No serve or rotation data.** "Service runs" cannot be computed, only consecutive points.
-- **Sample size.** Only one match was inspected. Older matches, cup matches or manually entered results may have no
-  event log, or different wording. Check a handful before building.
-- **Ordering.** Reverse the list first, and rely on list position within a shared score.
-- **Proxy / network.** No impact: all data is already on the page the app fetches and parses. About 330 rows per match,
-  so performance is a non-issue.
+  degrades. Mitigation: anchored patterns and the raw fallback.
+- **Corrections upstream.** After a "manuel ændring" marker the log may not add up. The graph uses the scores printed on
+  the point events, not its own count.
+- **Set target when live.** An unfinished set is assumed to go to 25 (15 for set 5). A live third set in a best-of-3 match
+  can therefore get a wrong set-point marker until it finishes.
+- **No serve or rotation data in the log.** Only the first rally of each set is excluded from side-out / break-point.
+- **Proxy / network.** No extra requests for options 1-5. About 200-360 events per match, so performance is a
+  non-issue.
+- **Not verified:** DVBF's cup set format for early rounds, the effective date of 8 substitutions, and official Danish
+  terms for "sideout", "breakpoint", "sætbold" and "serie" (taken from common usage).
+
+## Design
+
+Designed first in the design artifact ("Volleyball Resultater Redesign", component `MatchLog`, boards for phone light and
+dark, tablet and desktop, plus a variant with an extended set), then implemented.
+
+- Two teams use two colours from the validated chart palette: blue (home, above the line) and orange (away, below).
+  Checked against the app's light and dark backgrounds: all checks pass. Team identity is never colour alone (names,
+  position above/below the line, legend).
+- Order on the page: key figures, graphs, then the list.
+- Tablet and desktop show the graphs two per row.
 
 ## Recommendation
 
-Do A, B and C together: set sections, substitutions collapsed, point runs merged, timeouts annotated (D) when cheap,
-raw text as the fallback for every unrecognised line. Leave E for later. Before building, sample a few more matches
-(a cup match, an older season, a match with a walkover) to confirm the wording and that logs exist. Design work for the
-new Kampforløb layout should happen in the design artifact first.
+Ship options 1-5 (done). Treat the court view as a second phase: it needs a PDF route and parser, is correct on about
+70% of matches in the sample, and needs desync detection. Before building it, check a few more match types.
 
 ## How the numbers were produced
 
-The event table of match 75419 was fetched through the local worker
-(`/api/page/Kamp-Information.aspx?KampId=75419`), reversed to chronological order and classified by prefix and keyword
-as listed above. Run lengths count consecutive `Point til <same team>` lines under the two rules in Option A.
+Matches were fetched from the upstream site (match ids 73901, 74341, 75225, 75227, 75252, 75302, 75419, 75692, 76140,
+77379, 77438, 77496, 77845 for events; further ids across seasons to see where logs exist), reversed to chronological
+order and classified by prefix and keyword. Run lengths count consecutive `Point til <same team>` lines ignoring other
+events; timeout counts exclude consecutive identical lines. The lineup test used the scoresheet PDFs of the same matches.
+
+## Sources
+
+- FIVB Official Volleyball Rules 2025-2028: https://www.fivb.com/wp-content/uploads/2025/01/FIVB-Volleyball_Rules2025_2028-EN-v05.pdf
+- FIVB 2026 rule tests (8 substitutions): https://www.fivb.com/fivb-board-of-administration-approves-rule-tests-for-2026-competitions/
+- DVBF rule changes 2026: https://volleyball.dk/wp-content/uploads/2026/09/Aendringer-i-regler-2026.pdf
+- DVBF rule changes 2025-2028: https://volleyball.dk/wp-content/uploads/2025/09/Aendringer-i-regler-2025-2028.pdf
+- DVBF Danmarksturneringen propositions and youth rules (set formats): https://www.volleyball.dk/reglementer/
+- Side-out and break-point definitions: https://smartervolley.substack.com/p/sideout-what-is-it-good-for

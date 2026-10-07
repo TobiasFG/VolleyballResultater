@@ -5,6 +5,7 @@
   import { tone, toneClass } from '../results.js';
   import TeamName from '../components/TeamName.svelte';
   import VenueBlock from '../components/VenueBlock.svelte';
+  import MatchLog from '../components/MatchLog.svelte';
   import Loading from '../components/Loading.svelte';
   import ErrorBox from '../components/ErrorBox.svelte';
 
@@ -125,13 +126,7 @@
           <span>Kampforløb <span class="text-sm font-normal text-mute">({m.events.length} hændelser)</span></span>
           <svg class="size-[18px] fill-none stroke-mute stroke-[1.8] transition-transform group-open:rotate-180" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
         </summary>
-        <ol class="text-sm tabular-nums">
-          {#each m.events as event}
-            <li class="flex gap-4 border-b border-line py-2.5 last:border-b-0">
-              <span class="w-14 shrink-0 text-mute">{event.score}</span><span>{event.text}</span>
-            </li>
-          {/each}
-        </ol>
+        <div class="pt-6"><MatchLog {m} /></div>
       </details>
     {/if}
   </div>

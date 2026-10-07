@@ -9,6 +9,8 @@
   --color-fav: var(--fav);
   --color-win: var(--win);
   --color-loss: var(--loss);
+  --color-home: var(--home);
+  --color-away: var(--away);
 }
 
 :root {
@@ -19,6 +21,9 @@
   --fav: #3b82f6;
   --win: #15803d;
   --loss: #b42318;
+  /* The two teams in the match graphs; from the validated chart palette (blue, orange). */
+  --home: #2a78d6;
+  --away: #eb6834;
   --gold-a: #ffcc00;
   --gold-b: #d9a400;
   color-scheme: light;
@@ -32,6 +37,8 @@
   --fav: #60a5fa;
   --win: #5fd38d;
   --loss: #ff8a7e;
+  --home: #3987e5;
+  --away: #d95926;
   --gold-b: #fff4b0;
   color-scheme: dark;
 }

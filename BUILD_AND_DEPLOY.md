@@ -10,6 +10,7 @@ phone ──> Svelte app (static) ──> /api/* Cloudflare Worker ──> resul
   `/tms/Turneringer-og-resultater/`, adds CORS headers, caches responses briefly (60 s for schedules/standings/matches,
   1 h for everything else) and performs the ASP.NET search postback (`/api/search`). It also serves the built app.
 - **`src/lib/parse.js`** – turns the site's HTML tables into plain objects (runs in the browser).
+- **`src/lib/matchlog.js`** – turns a match's event log ("Kampforløb") into per-set data: lead graph, runs, side-out / break-point, list rows. Pure functions; see `docs/match-events-analysis.md` for the reasoning and limits.
 - **`src/lib/views/`** – one Svelte view per route: home, league (`raekke`), group (`pulje`), team (`hold`), match (`kamp`), club (`klub`), venue (`spillested`), club search (`soeg/klub`) and settings (`indstillinger`).
 
 Nothing is stored or scraped on a schedule; every page view fetches live data through the Worker.
