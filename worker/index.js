@@ -1,5 +1,5 @@
-// Thin proxy in front of resultater.volleyball.dk.
-// It only adds CORS, short caching and the ASP.NET search postback; all HTML parsing happens in the browser.
+// Thin proxy in front of resultater.volleyball.dk (HTML pages) and api.volleyball.dk (the scoresheet PDF).
+// It only adds CORS, caching and the ASP.NET search postback; all parsing happens in the browser.
 
 const BASE = 'https://resultater.volleyball.dk/tms/Turneringer-og-resultater/';
 const USER_AGENT = 'volleyball-resultater (mobile viewer proxy)';
@@ -23,6 +23,7 @@ export default {
       try {
         if (url.pathname.startsWith('/api/page/')) return await page(url);
         if (url.pathname === '/api/search') return await search(url);
+        if (url.pathname === '/api/scoresheet') return await scoresheet(url);
       } catch (err) {
         return text(`Upstream error: ${err.message}`, 502);
       }
@@ -51,6 +52,30 @@ async function page(url) {
       'Cache-Control': `public, max-age=${ttl}`,
       'X-Final-Url': final.pathname.split('/').pop() + final.search,
     },
+  });
+}
+
+// The scoresheet PDF is generated on every request (about a second) and the generator fails with a 500 when
+// requests overlap, so failures are retried a couple of times and never cached. A finished match (done=1)
+// is cached for a day, a live one for two minutes.
+async function scoresheet(url) {
+  const id = num(url.searchParams.get('matchID'));
+  if (!id) return text('Bad match id', 400);
+  const ttl = url.searchParams.get('done') === '1' ? 86400 : 120;
+  let res;
+  for (const wait of [0, 500, 1500]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    res = await fetch(`https://api.volleyball.dk/api/pdf/scorecard/?matchID=${id}`, {
+      headers: { 'User-Agent': USER_AGENT },
+      cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': ttl, 404: 600, '500-599': 0 } },
+    });
+    if (res.status < 500) break;
+  }
+  if (res.status === 404) return text('No scoresheet', 404);
+  const body = await res.arrayBuffer();
+  if (!res.ok || new TextDecoder().decode(body.slice(0, 4)) !== '%PDF') return text(`Upstream returned ${res.status}`, 502);
+  return new Response(body, {
+    headers: { ...CORS, 'Content-Type': 'application/pdf', 'Cache-Control': `public, max-age=${ttl}` },
   });
 }
 

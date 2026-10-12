@@ -200,7 +200,7 @@ export function parseMatch(doc) {
     home: link(info.get('Hjemmehold'), 'HoldId'),
     away: link(info.get('Udehold'), 'HoldId'),
     score: parseScore(txt('Kampresultat')),
-    matchPoints: txt('Kamppoint'),
+    matchPoints: parseScore(txt('Kamppoint')),
     referees: [...info.entries()]
       .filter(([label]) => label.startsWith('Dommer'))
       .map(([label, cell]) => ({ label, name: clean(cell.textContent) }))

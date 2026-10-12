@@ -139,6 +139,43 @@ Yes, it is possible, with data from the scoresheet PDF.
 - **Value.** Court diagram per rally, who is serving, per-player points while on court. Useful but heavier and
   fragile; it should come after the log-only views have proven themselves.
 
+## Scoresheet: serve and rotations (built 2026-10-12)
+
+The match page fetches the scoresheet in the background after the page has rendered (only for played matches with a
+log) and adds set minutes, the first server per set (so side-out / break-point now count every rally) and per-player
+serve figures (sorted by success rate; under 5 serves ranked last). On-court plus/minus, side-out and break per player
+were tried and removed: everyone on court in the same stretch gets the same numbers, so they measure the team, not the
+player. Truly individual figures (aces, serve errors, attack, reception) need per-touch scouting the scoresheet lacks. A section "Deltagelse" lists sets started, sets entered
+as a substitute and share of rallies on court per player, sorted by share. Liberos are tracked: "ind"/"ud" lines name
+the libero and the back-row player (399 of 399 "ud" lines in the sample named the player the replay had replaced), and
+an anonymous "ombytning af deres libero" is the team's two liberos changing places, the same player staying off court
+(28 of 28 resolvable cases). A libero in the front row is impossible; the only sample match where the log implies it
+(75227, with manual corrections) falls back to counting the six rotation players for that team and set. A section "Rotationer" counts rotations from setters the
+viewer marks (H1-H6 = the setter's position, H1 = she serves): the marking is a role on people, so a double switch
+(setter and opposite swapped) follows the new setter; with two marked setters on court the back-row one counts; one row
+of H1-H6 per setter; rallies without a marked setter on court are grouped by server; a player the libero stood in for during part of a
+rotation is listed together with the libero ("Mads/Hans"). The marking is stored per team in
+localStorage. The figures are the team's result in a rotation, not the setter's performance.
+
+- **Reading the PDF.** iText output, one standard font, each cell drawn as positioned text. About 30 lines of code
+  (inflate with `DecompressionStream`, a regex over the content streams), about 0.3 ms per sheet, no library.
+- **Layout quirks.** Long team names wrap to two lines and push a set box down, so rows are located relative to the
+  box's "Service Order" label, not at fixed coordinates. A best-of-3 decider is written in the set 5 box, whose third
+  panel continues the first team after the change of courts. Some scorers' clock times are wrong (a "2-minute" set);
+  durations under 8 minutes are dropped.
+- **Replay.** Starting lineup from the sheet, first server = the team on the left of the set box; a team rotates when
+  it wins a rally as receiver; substitutions from the log replace by shirt number; libero swaps are ignored (a libero
+  never serves). A set won on a side-out still gets the final score written under the next server.
+- **Check.** The replay's end-of-turn scores must equal the sheet's service rounds per column. 18 matches, 68 sets:
+  all match, every rally gets a named server, and each team's rotation figures sum to the set score difference.
+  The court-view desyncs reported above do not affect this, because it does not track liberos. A set that does not
+  match is left out of serve and rotation figures; during a live set only the part both sources have is compared.
+- **Upstream.** Concurrent requests to the PDF generator fail with a 500 (a file lock on their server); the Worker
+  retries and never caches failures. No scoresheet returns 404.
+- **Towards season stats.** `parseScoresheet` returns plain JSON with teams identified by name and players by shirt
+  number, so match summaries can later be stored or summed. A stable player key across matches needs the roster PDF
+  ("Holdkort"), which has license card numbers; it is not fetched yet.
+
 ## Limits and risks
 
 - **Free text.** There is no structured event type upstream. Classification relies on Danish phrasing (`Point til`,

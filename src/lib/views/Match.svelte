@@ -1,5 +1,5 @@
 <script>
-  import { page } from '../api.js';
+  import { page, scoresheet } from '../api.js';
   import { parseMatch } from '../parse.js';
   import { formatDay, formatTime } from '../format.js';
   import { tone, toneClass } from '../results.js';
@@ -13,7 +13,27 @@
   // svelte-ignore state_referenced_locally -- views are remounted on every route change
   const [id] = params;
 
-  const data = page(`Kamp-Information.aspx?KampId=${id}`).then(({ doc }) => parseMatch(doc));
+  const data = page(`Kamp-Information.aspx?KampId=${id}`).then(({ doc }) => {
+    const m = parseMatch(doc);
+    loadSheet(m);
+    return m;
+  });
+
+  // The scoresheet PDF takes about a second upstream, so the page renders without it and fills in when it arrives.
+  // Only played matches with an event log have a filled-in sheet.
+  let sheet = $state.raw(null);
+  let sheetStatus = $state('none'); // 'none' | 'loading' | 'ready' | 'failed'
+  function loadSheet(m) {
+    const matchId = m.scoresheet?.match(/matchID=(\d+)/i)?.[1];
+    if (!matchId || !m.events.length) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    sheetStatus = 'loading';
+    scoresheet(matchId, !!m.score && m.date < today).then(
+      (s) => ((sheet = s), (sheetStatus = 'ready')),
+      () => (sheetStatus = 'failed'),
+    );
+  }
 
   const won = (score, side) => (side === 0 ? score[0] > score[1] : score[1] > score[0]);
 
@@ -30,10 +50,8 @@
 
   const facts = (m) =>
     [
-      ['Bane', m.court],
-      ['Runde', m.round],
       ['Kampnummer', m.number],
-      ['Kamppoint', m.matchPoints],
+      ['Runde', m.round],
       ...m.referees.map((r) => [r.label, r.name]),
     ].filter(([, value]) => value);
 </script>
@@ -65,7 +83,14 @@
         </div>
         {#if m.score}
           <div class="flex flex-col gap-1 text-right text-[52px] leading-none md:text-[56px] tracking-[-0.03em] tabular-nums">
-            {#each [0, 1] as side}<div class={scoreClass(m, side)}>{m.score[side]}</div>{/each}
+            {#each [0, 1] as side}
+              <div class="flex items-baseline justify-end gap-2">
+                <span class={scoreClass(m, side)}>{m.score[side]}</span>
+                {#if m.matchPoints}
+                  <span class="text-xs tracking-normal text-mute" title="Kamppoint" aria-label="{m.matchPoints[side]} kamppoint">({m.matchPoints[side]} point)</span>
+                {/if}
+              </div>
+            {/each}
           </div>
         {:else}
           <div class="text-[26px] tracking-[-0.02em] text-mute">vs</div>
@@ -123,10 +148,10 @@
     {#if m.events.length}
       <details class="group lg:col-start-1">
         <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between border-y border-line text-base font-semibold [&::-webkit-details-marker]:hidden">
-          <span>Kampforløb <span class="text-sm font-normal text-mute">({m.events.length} hændelser)</span></span>
+          <span>Statistik & Kampforløb <span class="text-sm font-normal text-mute">({m.events.length} hændelser)</span></span>
           <svg class="size-[18px] fill-none stroke-mute stroke-[1.8] transition-transform group-open:rotate-180" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
         </summary>
-        <div class="pt-6"><MatchLog {m} /></div>
+        <div class="pt-6"><MatchLog {m} {sheet} {sheetStatus} /></div>
       </details>
     {/if}
   </div>

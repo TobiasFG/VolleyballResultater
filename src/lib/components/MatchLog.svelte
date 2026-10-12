@@ -1,12 +1,17 @@
 <script>
   import { tick } from 'svelte';
-  import { buildLog, listRows, liberoCount } from '../matchlog.js';
+  import { buildLog, listRows, liberoCount, SERVE_MIN } from '../matchlog.js';
   import LeadChart from './LeadChart.svelte';
+  import ServeTable from './ServeTable.svelte';
+  import Participation from './Participation.svelte';
+  import SetterRotations from './SetterRotations.svelte';
 
-  let { m } = $props();
+  // sheet: the parsed scoresheet once it has arrived (null before, or when there is none); sheetStatus tracks the fetch.
+  let { m, sheet = null, sheetStatus = 'none' } = $props();
 
   const names = $derived([m.home?.name ?? 'Hjemme', m.away?.name ?? 'Ude']);
-  const log = $derived(buildLog(m.events, names));
+  const log = $derived(buildLog(m.events, names, sheet));
+  const firstKnown = $derived(log.sets.every((s) => s.first !== undefined));
   const charted = $derived(log.sets.filter((s) => s.rallies.length > 1));
   const listed = $derived(log.sets.slice().reverse());
   const newest = $derived(log.sets.at(-1)?.n);
@@ -48,7 +53,7 @@
     const [h, a] = s.score;
     const score = `${h}–${a}`;
     if (!s.finished) return `${score} (i gang)`;
-    return `${score} til ${names[h > a ? 0 : 1]}`;
+    return `${score} til ${names[h > a ? 0 : 1]}${s.minutes ? ` · ${s.minutes} min` : ''}`;
   };
   const textOf = (row) => {
     const name = names[row.team];
@@ -75,6 +80,12 @@
 {/snippet}
 
 <div class="flex flex-col gap-9">
+  {#if sheetStatus === 'loading'}
+    <p class="text-xs text-mute" role="status">Henter kampskema for servestatistik …</p>
+  {:else if sheetStatus === 'failed'}
+    <p class="text-xs text-mute" role="status">Kampskemaet kunne ikke hentes, så servestatistikken vises ikke.</p>
+  {/if}
+
   {#if charted.length}
     <div class="flex flex-col gap-3">
       <div class="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2 lg:grid-cols-1">
@@ -82,9 +93,49 @@
         {@render statBlock('Breakpoint', 'bp')}
       </div>
       <p class="text-xs leading-normal text-mute">
-        Sideout: point vundet som modtager. Breakpoint: point vundet som server. Første rally i hvert sæt tælles ikke med.
+        Sideout: point vundet som modtager. Breakpoint: point vundet som server.
+        {firstKnown ? 'Hvem der server først i hvert sæt, står i kampskemaet.' : 'Første rally i hvert sæt tælles ikke med.'}
       </p>
     </div>
+
+    {#if log.serve?.some((rows) => rows.length)}
+      <div class="flex flex-col gap-3.5">
+        <div class="section-title">Serv</div>
+        <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 lg:grid-cols-1">
+          {#each [0, 1] as side}<ServeTable rows={log.serve[side]} name={names[side]} {side} />{/each}
+        </div>
+        <p class="text-xs leading-normal text-mute">
+          Vundet i egen serv: andel af rallies holdet vandt, mens spilleren serverede (es, men også godt forsvar og angreb).
+          Bjælken er usikkerheden (95 % Wilson-interval): smallere jo flere serv ved samme andel, bredest omkring 50 %.
+          Stregen er holdets snit; overlapper bjælkerne, kan forskellen være tilfældig. Tryk på
+          en række for at se tallene. Serie: flest point i træk i én serveomgang. Under {SERVE_MIN} serv er nedtonet og står
+          sidst.
+          {#if log.sets.some((s) => s.first !== undefined && !s.rotations)}Sæt hvor kampskema og kampforløb ikke stemmer overens, er ikke talt med.{/if}
+        </p>
+      </div>
+    {/if}
+
+    {#if log.participation?.some((team) => team.rows.length)}
+      <div class="flex flex-col gap-3.5">
+        <div class="section-title">Deltagelse</div>
+        <div class="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 lg:grid-cols-1">
+          {#each [0, 1] as side}<Participation team={log.participation[side]} name={names[side]} {side} />{/each}
+        </div>
+        <p class="text-xs leading-normal text-mute">
+          Start: sæt i startopstillingen. Ind: sæt, hvor spilleren kom ind som indskifter. På banen: andel af holdets rallies,
+          også for liberoen; en spiller, liberoen står for, er ikke på banen imens.
+          {#if log.participation.some((p) => p.untracked)}I sæt, hvor kampforløbet ikke stemmer med liberoens skift, tælles
+            liberoen ikke med.{/if}
+        </p>
+      </div>
+    {/if}
+
+    {#if log.sets.some((s) => s.rotations)}
+      <div class="flex flex-col gap-3.5">
+        <div class="section-title">Rotationer</div>
+        <SetterRotations sets={log.sets} {names} teams={[m.home, m.away]} participation={log.participation} />
+      </div>
+    {/if}
 
     <div class="flex flex-col gap-3.5">
       <div class="section-title">Sætforløb</div>
@@ -114,6 +165,7 @@
       </div>
     </div>
   {/if}
+
 
   <div class="flex flex-col">
     {#if liberos}
