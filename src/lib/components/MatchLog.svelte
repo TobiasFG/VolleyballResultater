@@ -9,6 +9,9 @@
   // sheet: the parsed scoresheet once it has arrived (null before, or when there is none); sheetStatus tracks the fetch.
   let { m, sheet = null, sheetStatus = 'none' } = $props();
 
+  // The Rotationer section is switched off for now; set to true to show it again.
+  const SHOW_ROTATIONS = false;
+
   const names = $derived([m.home?.name ?? 'Hjemme', m.away?.name ?? 'Ude']);
   const log = $derived(buildLog(m.events, names, sheet));
   const firstKnown = $derived(log.sets.every((s) => s.first !== undefined));
@@ -130,7 +133,7 @@
       </div>
     {/if}
 
-    {#if log.sets.some((s) => s.rotations)}
+    {#if SHOW_ROTATIONS && log.sets.some((s) => s.rotations)}
       <div class="flex flex-col gap-3.5">
         <div class="section-title">Rotationer</div>
         <SetterRotations sets={log.sets} {names} teams={[m.home, m.away]} participation={log.participation} />
